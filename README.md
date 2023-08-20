@@ -98,6 +98,52 @@ select * from otodom_data_short_flatten limit 50;
 ```
 ![image](https://github.com/Pradnya1111/Otodom_Data_Analysis_Project/assets/87003134/523d668e-ffa8-4772-a2cb-2621a8c6e949)<br>
 
+Now we have crated the different stages to load the address table and title which is in English<br>
+Once its loaded we have copied the data into the tables.<br>
+We have loaded both files using PUT command<br>
+```sql
+CREATE OR REPLACE FILE FORMAT CSV_FORMAT
+  type = csv
+  field_delimiter = ','
+  field_optionally_enclosed_by='"';
+
+create or replace stage my_csv_stage
+file_format=CSV_FORMAT;
+
+create or replace stage my_csv_stage_trans
+file_format=CSV_FORMAT;
+```
+![image](https://github.com/Pradnya1111/Otodom_Data_Analysis_Project/assets/87003134/3c295bd2-f527-4465-b9c6-4323b192ac41)
+
+```sql
+create table otodom_data_flatten_address_full(
+rn int,
+location text,
+address text
+);
+
+create table otodom_data_flatten_trans_full(
+rn int,
+title text,
+title_en text
+);
+
+copy into otodom_data_flatten_trans_full from
+@my_csv_stage_trans;
+
+copy into otodom_data_flatten_address_full from
+ @my_csv_stage;
+```
+
+We have transformed the data to single table.<br>
+```sql
+CREATE OR REPLACE TABLE OTODOM_DATA_TRANSFORMED
+as
+with cte as (select ot.*, case when price like 'PLN%' then try_to_number(replace(price,'PLN ',''),'999,999,999.99') 
+when price like '€%' then try_to_number(replace(price,'€',''),'999,999,999.99') * 4.43 end as price_new, try_to_double(replace(replace(replace(replace(surface,'m²',''),'м²',''),' ',''),',','.'),'9999.99') as surface_new, replace(parse_json(addr.address):suburb,'"', '') as suburb, replace(parse_json(addr.address):city,'"', '') as city, replace(parse_json(addr.address):country,'"', '') as country, trans.title_en as title_eng from otodom_data_short_flatten ot left join otodom_data_flatten_address_full addr on ot.rn=addr.rn left join otodom_data_flatten_trans_full trans on ot.rn=trans.rn) select *, case when lower(title_eng) like '%commercial%' or lower(title_eng) like '%office%' or lower(title_eng) like '%shop%' then 'non apartment' when is_for_sale = 'false' and surface_new <=330 and price_new <=55000 then 'apartment' when is_for_sale = 'false' then 'non apartment' when is_for_sale = 'true' and surface_new <=600 and price_new <=20000000 then 'apartment' when is_for_sale = 'true'  then 'non apartment' end as apartment_flag
+from cte;
+```
+
 
 
 
