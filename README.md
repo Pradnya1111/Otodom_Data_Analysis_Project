@@ -136,6 +136,7 @@ copy into otodom_data_flatten_address_full from
 ```
 
 We have transformed the data to single table.<br>
+The code below creates a new table named OTODOM_DATA_TRANSFORMED through data transformation. It processes existing property data, converts prices and surface areas, extracts address elements, and translates titles. Additionally, it determines property types based on conditions like price and surface. Finally, it generates an apartment_flag column that categorizes properties.
 ```sql
 CREATE OR REPLACE TABLE OTODOM_DATA_TRANSFORMED
 as
